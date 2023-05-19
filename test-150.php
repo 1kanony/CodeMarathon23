@@ -2,6 +2,8 @@
 
 include 'yeniAd.php';
 
+// auto-generated random names
+
 echo yeniAd("James"), "\n";
 echo yeniAd("jessica"), "\n";
 echo yeniAd("Daniel"), "\n";

@@ -4,12 +4,14 @@ const FILENAME = 'adlar.txt';
 
 function openFile() {
     if (!file_exists(FILENAME)) {
-        $file = fopen(FILENAME, 'w');
+        $file = fopen(FILENAME, 'w+');
 
         if($file == false) {
             echo ("Fayl yaradıla bilmədi.");
             exit();
         }
+
+        return $file;
     } else return fopen(FILENAME, 'r+');
 }
 
@@ -32,8 +34,6 @@ function initRelativeNameList(string &$line, $file, string $letter) {
 }
 
 function initNameList($file) {
-    rewind($file);
-
     $names = [];
     $lowerCaseOrd = ord('a');
     $upperCaseOrd = ord('A');
@@ -70,33 +70,33 @@ function initNameList($file) {
     return $names;
 }
 
-function getRelativeOffset(string $yeniAd, array &$nisbiSira): int {
+function getRelativeOffset(string $newName, array &$nameList): int {
     // $yeniAd həmin əlifba sırasına görə nisbi indeksini qaytarır
     // nisbi sıra dedikdə bütün $yeniAd'ın baş hərfi ilə başlayan adlar sırası
 
-    if (count($nisbiSira) === 0)
+    if (count($nameList) === 0)
         return 0;
 
-    foreach($nisbiSira as $i => $ad)
-        if($yeniAd < $ad)
+    foreach($nameList as $i => $name)
+        if($newName < $name)
             return $i;
 
-    return count($nisbiSira);
+    return count($nameList);
 }
 
 function nameList($file) {
-    static $sira = null;
+    static $names = null;
 
-    if($sira === null)
-        $sira = initNameList($file);
+    if($names === null)
+        $names = initNameList($file);
     
-    return $sira;
+    return $names;
 }
 
-function updateFile($sira) {
+function updateFile($nameList) {
     $file = fopen(FILENAME, 'w');
 
-    foreach ($sira as $i) {
+    foreach ($nameList as $i) {
         foreach ($i as $j) {
             fwrite($file, $j.PHP_EOL);
         }
@@ -116,10 +116,10 @@ function previousLetter($letter) {
     return $prevLetter;
 }
 
-function getOffsetOfLetter(string $letter, array &$adlar): int {
+function getOffsetOfLetter(string $letter, array &$nameList): int {
     $offset = 0;
 
-    if($letter === 'a') return 0;
+    if($letter === 'a') return count($nameList[$letter]);
     else {
         // Rekursiv geriyə sıralamayla gedib offset -ləri cəmləmək
         // Məsələn
@@ -127,19 +127,19 @@ function getOffsetOfLetter(string $letter, array &$adlar): int {
         // b -> A
         // A -> a
 
-        $offset = count($adlar[$letter]);
+        $offset = count($nameList[$letter]);
 
-        $offset += getOffsetOfLetter(previousLetter($letter), $adlar);
+        $offset += getOffsetOfLetter(previousLetter($letter), $nameList);
     }
 
     return $offset;
 }
 
 
-function orderRelatively(string $yeniAd, array &$sira): int {
+function orderRelatively(string $yeniAd, array &$nameList): int {
     $letter = $yeniAd[0];
-    $relativeOffset = getRelativeOffset($yeniAd, $sira[$letter]);
-    array_splice($sira[$letter], $relativeOffset, 0, $yeniAd);
+    $relativeOffset = getRelativeOffset($yeniAd, $nameList[$letter]);
+    array_splice($nameList[$letter], $relativeOffset, 0, $yeniAd);
 
     return $relativeOffset;
 }
@@ -163,7 +163,6 @@ function yeniAd(string $ad) {
     $names = &cachedNames($file);
 
     $relativeOffset = orderRelatively($ad, $names);
-
 
     $alphabeticalOffset = getOffsetOfLetter(previousLetter($ad[0]), $names);
     $lineNumber = $relativeOffset + $alphabeticalOffset + 1;
