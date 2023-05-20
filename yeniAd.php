@@ -84,15 +84,6 @@ function getRelativeOffset(string $newName, array &$nameList): int {
     return count($nameList);
 }
 
-function nameList($file) {
-    static $names = null;
-
-    if($names === null)
-        $names = initNameList($file);
-    
-    return $names;
-}
-
 function updateFile($nameList) {
     $file = fopen(FILENAME, 'w');
 
@@ -144,31 +135,37 @@ function orderRelatively(string $yeniAd, array &$nameList): int {
     return $relativeOffset;
 }
 
-function &cachedNames($file) {
-    // cached yəni hər dəfə initialize etməyə ehtiyac yoxdu
-    // proqram başlayan zaman ilk dəfə ümumi sıra verilmiş fayldan qurulacaq
-    // və hər dəfə yeni əlavə olan adlar yenidən fayldan oxunmağa ehticay qalmayacaq 
+class UpdateFileOnce {
+    public static $names = [];
 
-    static $names = null;
-    
-    if($names === null) {
-        $names = nameList($file);
+    public static function update() {
+        updateFile(self::$names);
     }
-
-    return $names;
 }
 
 function yeniAd(string $ad) {
-    $file = openFile();
-    $names = &cachedNames($file);
+    static $registered = false;
+    static $namesAcquired = false;
+    static $names;
+    
+    if($namesAcquired === false) {
+        $file = openFile();
+        $names = initNameList($file);
+        fclose($file);
+
+        $namesAcquired = true;
+    }
 
     $relativeOffset = orderRelatively($ad, $names);
 
     $alphabeticalOffset = getOffsetOfLetter(previousLetter($ad[0]), $names);
     $lineNumber = $relativeOffset + $alphabeticalOffset + 1;
-    
-    updateFile($names);
-    fclose($file);
+    UpdateFileOnce::$names = $names;
+
+    if($registered === false) {
+        register_shutdown_function('UpdateFileOnce::update');
+        $registered = true;
+    }
 
     return $lineNumber;
 }
